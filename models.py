@@ -2,16 +2,14 @@ import torch
 import torch.nn as nn
 
 class GRU4Rec(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, num_layers, dropout):
+    def __init__(self, num_articles, emb_size, hidden_size, num_layers, dropout):
         super().__init__()
-        self.input_size = input_size
         self.hidden_size = hidden_size
-        self.output_size = output_size
         self.num_layers = num_layers
-        self.embedding = nn.Embedding(input_size, hidden_size)
-        self.gru = nn.GRU(hidden_size, hidden_size, num_layers, dropout=dropout, batch_first=True)
-        self.proj_1 = nn.Linear(hidden_size, output_size//2)
-        self.proj_2 = nn.Linear(output_size//2, output_size)
+        self.embedding = nn.Embedding(num_articles, emb_size)
+        self.gru = nn.GRU(emb_size, hidden_size, num_layers, dropout=dropout, batch_first=True)
+        self.proj_1 = nn.Linear(hidden_size, num_articles//2)
+        self.proj_2 = nn.Linear(num_articles//2, num_articles)
         
     def forward(self, input, hidden):
         embedded = self.embedding(input)

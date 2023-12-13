@@ -10,6 +10,7 @@ class GRU4Rec(nn.Module):
         self.gru = nn.GRU(emb_size, hidden_size, num_layers, dropout=dropout, batch_first=True)
         self.proj_1 = nn.Linear(hidden_size, num_articles//2)
         self.proj_2 = nn.Linear(num_articles//2, num_articles)
+        self.init_weight()
         
     def forward(self, input, hidden):
         embedded = self.embedding(input)

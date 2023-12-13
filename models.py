@@ -15,7 +15,6 @@ class GRU4Rec(nn.Module):
         
     def forward(self, input, hidden):
         embedded = self.embedding(input)
-        embedded = self.dropout(embedded)
         output, _ = self.gru(embedded, hidden)
         output = self.proj_1(output).relu()
         output = self.proj_2(output)

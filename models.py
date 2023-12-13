@@ -12,9 +12,9 @@ class GRU4Rec(nn.Module):
         self.proj_2 = nn.Linear(num_articles//2, num_articles)
         self.init_weight()
         
-    def forward(self, input, hidden):
+    def forward(self, input):
         embedded = self.embedding(input)
-        output, _ = self.gru(embedded, hidden)
+        output, _ = self.gru(embedded)
         output = self.proj_1(output).relu()
         output = self.proj_2(output)
         return output

@@ -1,13 +1,14 @@
 import pandas as pd
 import torch
+from torch.nn.utils.rnn import pad_sequence
 from tqdm.auto import tqdm
 
-class HMDataset:
+class SequentialDataset:
     def __init__(self, csv_fn, min_length=3):
         print('Creating dataset...')
         self.min_length = min_length
         self.transactions = pd.read_csv(csv_fn)
-        self.idx2article = sorted(self.transactions['article_id'].unique().tolist())
+        self.idx2article = ['<pad>'] + sorted(self.transactions['article_id'].unique().tolist())
         self.article2idx = {a: i for i, a in enumerate(self.idx2article)}
         sessions = []
         cur_user = None
@@ -25,4 +26,11 @@ class HMDataset:
         return len(self.sessions)
     
     def __getitem__(self, idx):
-        return torch.tensor(self.sessions[idx][:-1]), torch.tensor(self.sessions[idx][1:])
+        return self.sessions[idx]
+    
+def collate_fn(batch):
+    x = [torch.LongTensor(item[:-1]) for item in batch]
+    x = pad_sequence(x, batch_first=True, padding_value=0)
+    y = torch.cat([torch.LongTensor(item[1:]) for item in batch], dim=0)
+    lengths = torch.LongTensor([len(item)-1 for item in batch])
+    return x, y, lengths

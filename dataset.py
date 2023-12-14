@@ -16,11 +16,12 @@ class SequentialDataset:
         for user, article in tqdm(self.transactions[['customer_id', 'article_id']].values):
             if user != cur_user:
                 if len(cur_session) > 0:
-                    sessions.append(cur_session)
+                    sessions.append((cur_session, cur_user))
                 cur_user = user
                 cur_session = []
-            cur_session.append(self.article2idx[article])
-        self.sessions = [s for s in sessions if len(s) >= self.min_length]
+            if cur_session[-1] != self.article2idx[article]:
+                cur_session.append(self.article2idx[article])
+        self.sessions = [s for s in sessions if len(s[0]) >= self.min_length]
 
     def __len__(self):
         return len(self.sessions)
@@ -29,8 +30,10 @@ class SequentialDataset:
         return self.sessions[idx]
     
 def collate_fn(batch):
-    x = [torch.LongTensor(item[:-1]) for item in batch]
+    x = [torch.LongTensor(item[0][:-1]) for item in batch]
     x = pad_sequence(x, batch_first=True, padding_value=0)
-    y = torch.cat([torch.LongTensor(item[1:]) for item in batch], dim=0)
-    lengths = torch.LongTensor([len(item)-1 for item in batch])
-    return x, y, lengths
+    y = [torch.LongTensor(item[0][1:]) for item in batch]
+    y = pad_sequence(y, batch_first=True, padding_value=0)
+    lengths = torch.LongTensor([len(item[0])-1 for item in batch])
+    users = [item[1] for item in batch]
+    return x, y, lengths, users

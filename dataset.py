@@ -12,6 +12,7 @@ class SequentialDataset:
         self.article2idx = {a: i for i, a in enumerate(self.idx2article)}
         sessions = []
         cur_user = None
+        last_article = None
         cur_session = []
         for user, article in tqdm(self.transactions[['customer_id', 'article_id']].values):
             if user != cur_user:
@@ -19,8 +20,10 @@ class SequentialDataset:
                     sessions.append((cur_session, cur_user))
                 cur_user = user
                 cur_session = []
-            if cur_session[-1] != self.article2idx[article]:
+                last_article = None
+            if article != last_article:
                 cur_session.append(self.article2idx[article])
+                last_article = article
         self.sessions = [s for s in sessions if len(s[0]) >= self.min_length]
 
     def __len__(self):

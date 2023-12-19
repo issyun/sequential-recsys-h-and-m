@@ -24,6 +24,9 @@ class Trainer:
         self.val_loader = val_loader
         self.optimizer = optimizer
         self.device = device
+
+    def load_checkpoint(self, fn):
+        self.model.load_state_dict(torch.load(fn))
     
     def get_nll(self, x, y):
         x = x.reshape(-1, x.shape[-1])

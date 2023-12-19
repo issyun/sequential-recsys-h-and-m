@@ -8,11 +8,12 @@ class SequentialDataset:
         print('Creating dataset...')
         self.min_length = min_length
         self.transactions = pd.read_csv(transactions_fn)
-        self.idx2article = ['<pad>'] + sorted(self.transactions['article_id'].unique().tolist())
-        self.article2idx = {a: i for i, a in enumerate(self.idx2article)}
+        self.idx2item = ['<pad>'] + sorted(self.transactions['article_id'].unique().tolist())
+        self.item2idx = {a: i for i, a in enumerate(self.idx2item)}
         self.users = pd.read_csv(users_fn)
         self.idx2user = sorted(self.users['customer_id'].unique().tolist())
         self.user2idx = {u: i for i, u in enumerate(self.idx2user)}
+        self.user_purchases = self.transactions.groupby('customer_id')['article_id'].apply(list).to_dict()
         sessions = []
         cur_user = None
         last_article = None
@@ -25,9 +26,12 @@ class SequentialDataset:
                 cur_session = []
                 last_article = None
             if article != last_article:
-                cur_session.append(self.article2idx[article])
+                cur_session.append(self.item2idx[article])
                 last_article = article
         self.sessions = [s for s in sessions if len(s[0]) >= self.min_length]
+
+    def check_purchase(self, user, item):
+        return self.idx2item[item] in self.user_purchases[self.idx2user[user]]
 
     def __len__(self):
         return len(self.sessions)

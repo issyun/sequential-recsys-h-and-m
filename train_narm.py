@@ -1,20 +1,20 @@
 import argparse
 import torch
+from torch.nn.utils.rnn import unpad_sequence
 from tqdm.auto import tqdm
 import wandb
-from models import GRU4Rec
+from models import NARM
 from dataset import SequentialDataset, collate_fn
 
 hyperparams = {
-    'num_epochs': 5,
+    'num_epochs': 4,
     'lr': 0.001,
-    'batch_size': 48,
+    'batch_size': 64,
     'item_emb_dim': 128,
-    'user_emb_dim': 64,
     'hidden_dim': 512,
-    'num_layers': 4,
-    'dropout': 0.2
+    'num_layers': 1
 }
+
 RANDOM_SEED = 20171237
 DEV = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -28,13 +28,13 @@ class Trainer:
 
     def load_checkpoint(self, fn):
         self.model.load_state_dict(torch.load(fn))
-    
+
     def get_nll(self, x, y):
-        x = x.reshape(-1, x.shape[-1])
-        y = y.reshape(-1)
-        x = x[y != 0]
-        y = y[y != 0]
-        nll = -torch.log(x[torch.arange(len(y)), y] + 1e-8).mean()
+        '''
+        x: (batch_size, num_items)
+        y: (batch_size)
+        '''
+        nll = -torch.log(x[torch.arange(x.shape[0]), y] + 1e-8).mean()
         num_correct = (x.argmax(dim=-1) == y).sum().item()
         return nll, num_correct
     
@@ -47,13 +47,11 @@ class Trainer:
             train_correct = 0
             train_total = 0
             for iter, batch in enumerate(tqdm(self.train_loader)):
-                x, y, lengths, users = batch
+                x, y, lengths, _ = batch
                 x = x.to(self.device)
-                y = y.to(self.device)
-                users = users.to(self.device)
+                y = torch.LongTensor([s[-1] for s in unpad_sequence(y, lengths, batch_first=True)]).to(self.device)
 
-                out = self.model(x, lengths, users)
-                out = out.softmax(dim=-1)
+                out = self.model(x, lengths).softmax(dim=-1)
                 loss, num_correct = self.get_nll(out, y)
                 self.optimizer.zero_grad()
                 loss.backward()
@@ -63,6 +61,7 @@ class Trainer:
                     wandb.log({'train_loss': loss.item()})
                 train_correct += num_correct
                 train_total += len(y)
+
                 if log_to_wandb and iter % 100 == 0:
                     wandb.log({'train_acc': train_correct / train_total})
                     train_correct = 0
@@ -76,21 +75,20 @@ class Trainer:
             val_total = 0
             with torch.inference_mode():
                 for iter, batch in enumerate(tqdm(self.val_loader)):
-                    x, y, lengths, users = batch
+                    x, y, lengths, _ = batch
                     x = x.to(self.device)
-                    y = y.to(self.device)
-                    users = users.to(self.device)
+                    y = torch.LongTensor([s[-1] for s in unpad_sequence(y, lengths, batch_first=True)]).to(self.device)
 
-                    out = self.model(x, lengths, users)
-                    out = out.softmax(dim=-1)
+                    out = self.model(x, lengths).softmax(dim=-1)
                     loss, num_correct = self.get_nll(out, y)
                     val_loss += loss.item()
-
-                    if log_to_wandb:
-                        wandb.log({'val_loss': loss.item()})
                     val_correct += num_correct
                     val_total += len(y)
-            wandb.log({'val_acc': val_correct / val_total})
+
+            if log_to_wandb:
+                wandb.log({'val_loss': val_loss / val_total})
+                wandb.log({'val_acc': val_correct / val_total})
+
             torch.save(self.model.state_dict(), f'checkpoints/{run_name}_epoch_{epoch}_end.pt')
 
 def main(args):
@@ -99,7 +97,7 @@ def main(args):
     train_set, val_set = torch.utils.data.random_split(dataset, [0.95, 0.05], generator)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=hyperparams['batch_size'], shuffle=True, generator=generator, collate_fn=collate_fn)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=hyperparams['batch_size'], shuffle=False, collate_fn=collate_fn)
-    model = GRU4Rec(len(dataset.idx2article), len(dataset.idx2user), hyperparams['item_emb_dim'], hyperparams['user_emb_dim'], hyperparams['hidden_dim'], hyperparams['num_layers'], hyperparams['dropout'])
+    model = NARM(len(dataset.idx2item), hyperparams['item_emb_dim'], hyperparams['hidden_dim'], hyperparams['batch_size'])
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['lr'])
     trainer = Trainer(model, train_loader, val_loader, optimizer, DEV)
     model.to(DEV)
@@ -107,6 +105,6 @@ def main(args):
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
-    argparser.add_argument('--run_name', type=str, default='GRU4Rec')
+    argparser.add_argument('--run_name', type=str, default='NARM')
     args = argparser.parse_args()
-    main()
+    main(args)

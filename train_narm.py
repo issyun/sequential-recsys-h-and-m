@@ -97,7 +97,7 @@ def main(args):
     train_set, val_set = torch.utils.data.random_split(dataset, [0.95, 0.05], generator)
     train_loader = torch.utils.data.DataLoader(train_set, batch_size=hyperparams['batch_size'], shuffle=True, generator=generator, collate_fn=collate_fn)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=hyperparams['batch_size'], shuffle=False, collate_fn=collate_fn)
-    model = NARM(len(dataset.idx2item), hyperparams['item_emb_dim'], hyperparams['hidden_dim'], hyperparams['batch_size'])
+    model = NARM(len(dataset.idx2item), hyperparams['item_emb_dim'], hyperparams['hidden_dim'])
     optimizer = torch.optim.Adam(model.parameters(), lr=hyperparams['lr'])
     trainer = Trainer(model, train_loader, val_loader, optimizer, DEV)
     model.to(DEV)

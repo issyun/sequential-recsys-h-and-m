@@ -30,13 +30,12 @@ class GRU4Rec(nn.Module):
         self.proj.bias.data.fill_(0)
 
 class NARM(nn.Module):
-    def __init__(self, num_items, hidden_size, emb_size, batch_size, num_layers=1):
+    def __init__(self, num_items, emb_size, hidden_size, num_layers=1):
         super(NARM, self).__init__()
         self.num_items = num_items
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.emb_size = emb_size
-        self.batch_size = batch_size
 
         self.emb = nn.Embedding(num_items, emb_size)
         self.gru = nn.GRU(emb_size, hidden_size, num_layers, batch_first=True)
@@ -62,7 +61,7 @@ class NARM(nn.Module):
         c_local = torch.sum(alpha.unsqueeze(2).expand_as(gru_out) * gru_out, 1)
 
         c_t = self.B(torch.cat([c_local, c_global], 1)).unsqueeze(2)
-        item_embs = self.emb(torch.arange(self.num_items).to(input.device)).unsqueeze(0).expand(self.batch_size, -1, -1)
+        item_embs = self.emb(torch.arange(self.num_items).to(input.device)).unsqueeze(0).expand(input.shape[0], -1, -1)
         scores = torch.bmm(item_embs, c_t).squeeze()
 
         return scores

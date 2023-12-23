@@ -1,15 +1,13 @@
 import argparse
 import torch
 from tqdm.auto import tqdm
-from models import GRU4Rec
+from models import NARM
 from dataset import SequentialDataset, collate_fn
 
 hyperparams = {
     'item_emb_dim': 128,
-    'user_emb_dim': 64,
     'hidden_dim': 512,
-    'num_layers': 4,
-    'dropout': 0.2
+    'num_layers': 1
 }
 RANDOM_SEED = 20171237
 DEV = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -20,7 +18,7 @@ def main(args):
     train_set, val_set = torch.utils.data.random_split(dataset, [0.95, 0.05], generator)
     del(train_set)
     val_loader = torch.utils.data.DataLoader(val_set, batch_size=1, shuffle=False, collate_fn=collate_fn)
-    model = GRU4Rec(len(dataset.idx2item), len(dataset.idx2user), hyperparams['item_emb_dim'], hyperparams['user_emb_dim'], hyperparams['hidden_dim'], hyperparams['num_layers'], hyperparams['dropout'])
+    model = NARM(len(dataset.idx2item), hyperparams['item_emb_dim'], hyperparams['hidden_dim'])
     model.to(DEV)
     model.load_state_dict(torch.load(args.checkpoint))
     model.eval()
@@ -36,7 +34,6 @@ def main(args):
     with torch.inference_mode():
         for batch in tqdm(val_loader, total=num_total):
             x, _, lengths, users = batch
-            users = users.to(DEV)
             user = users[0].item()
             if user in tested_users:
                 continue
@@ -44,8 +41,8 @@ def main(args):
             num_tests += 1
             x = x.to(DEV)
             
-            out = model(x, lengths, users)
-            out = out[:, -1, :].softmax(dim=-1).squeeze()
+            out = model(x, lengths)
+            out = out.softmax(dim=-1).squeeze()
             ranked = torch.argsort(out, descending=True).tolist()
 
             for rank, item in enumerate(ranked):
@@ -66,7 +63,7 @@ def main(args):
             if num_tests > num_total:
                 break
 
-    print('=== GRU4Rec(with user embeddings) Evaluation Results ===')
+    print('=== NARM Evaluation Results ===')
     print(f'MRR: {reciprocal_sum / num_tests}')
     print(f'MAP@10: {ap_sum / num_tests}')
     print(f'Precision@10: {precision_sum / num_tests}')
@@ -74,6 +71,6 @@ def main(args):
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument('-n', '--num_tests', type=int, default=10000)
-    argparser.add_argument('-c', '--checkpoint', type=str, default='checkpoints/GRU4Rec_ckpt.pt')
+    argparser.add_argument('-c', '--checkpoint', type=str, default='checkpoints/NARM_ckpt.pt')
     args = argparser.parse_args()
     main(args)

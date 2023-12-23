@@ -2,6 +2,7 @@
 # Sequential Recommender Models Implementation
 
 GRU4Rec and Neural Attentive Recommendation Machine(NARM) implementation in PyTorch, with data from the Kaggle H&M Personalized Fashion Recommendations(https://www.kaggle.com/competitions/h-and-m-personalized-fashion-recommendations/). Done as a term project for the course "Basic Recommender Systems", fall 2023.
+
 Only the csv files from the H&M dataset is used. They should be placed in the data/ folder as so:
 
 ```
@@ -47,4 +48,4 @@ data
 |GRU4Rec(w/o user emb) | 0.4118 | 0.0733 | 0.1402|
 |GRU4Rec(w/ user emb) | 0.3633 | 0.0605 | 0.1178|
 
-These are results from preliminary tests; I belive more tests with proper hyperparameter tuning is required.
+These are results from preliminary tests; I belive more tests with proper hyperparameter tuning is needed.

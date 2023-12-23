@@ -7,7 +7,7 @@ from models import NARM
 from dataset import SequentialDataset, collate_fn
 
 hyperparams = {
-    'num_epochs': 4,
+    'num_epochs': 6,
     'lr': 0.001,
     'batch_size': 64,
     'item_emb_dim': 128,
